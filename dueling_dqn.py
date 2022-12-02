@@ -7,41 +7,12 @@ import random
 from itertools import count
 import torch.nn.functional as F
 from tensorboardX import SummaryWriter
-
+from model import QNetwork
+import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class QNetwork(nn.Module):
-    def __init__(self):
-        super(QNetwork, self).__init__()
-
-        self.fc1 = nn.Linear(4, 64)
-        self.relu = nn.ReLU()
-        self.fc_value = nn.Linear(64, 256)
-        self.fc_adv = nn.Linear(64, 256)
-
-        self.value = nn.Linear(256, 1)
-        self.adv = nn.Linear(256, 2)
-
-    def forward(self, state):
-        y = self.relu(self.fc1(state))
-        value = self.relu(self.fc_value(y))
-        adv = self.relu(self.fc_adv(y))
-
-        value = self.value(value)
-        adv = self.adv(adv)
-
-        advAverage = torch.mean(adv, dim=1, keepdim=True)
-        Q = value + adv - advAverage
-
-        return Q
-
-    def select_action(self, state):
-        with torch.no_grad():
-            Q = self.forward(state)
-            action_index = torch.argmax(Q, dim=1)
-        return action_index.item()
 
 
 class Memory(object):
@@ -56,8 +27,7 @@ class Memory(object):
         return len(self.buffer)
 
     def sample(self, batch_size: int, continuous: bool = True):
-        if batch_size > len(self.buffer):
-            batch_size = len(self.buffer)
+        batch_size = min(batch_size, len(self.buffer))
         if continuous:
             rand = random.randint(0, len(self.buffer) - batch_size)
             return [self.buffer[i] for i in range(rand, rand + batch_size)]
@@ -97,12 +67,33 @@ begin_learn = False
 
 episode_reward = 0
 
+
+run = wandb.init(project="Dueling DQN", entity="evolvingnn")
+
+wandb.config = {
+    "Gamma": GAMMA,
+    "Explore": EXPLORE,
+    "Initial Epsilon": INITIAL_EPSILON,
+    "Final Epsilon": FINAL_EPSILON,
+    "Replay Memory": REPLAY_MEMORY,
+    "Batch": BATCH,
+    "Update Steps": UPDATE_STEPS
+}
+
+wandb.watch(onlineQNetwork)
+
+# Save code to wandb
+wandb.run.log_code(".")
+
+
+
+
 # onlineQNetwork.load_state_dict(torch.load('ddqn-policy.para'))
 for epoch in count():
 
     state = env.reset()
     episode_reward = 0
-    for time_steps in range(200):
+    for _ in range(200):
         p = random.random()
         if p < epsilon:
             action = random.randint(0, 1)
@@ -148,10 +139,13 @@ for epoch in count():
         state = next_state
 
     writer.add_scalar('episode reward', episode_reward, global_step=epoch)
-    if epoch % 10 == 0:
-        torch.save(onlineQNetwork.state_dict(), 'ddqn-policy.para')
+    if epoch % 100 == 0 and epoch != 0:
+        torch.save(onlineQNetwork.state_dict(), 'ddqn-policy.pth')
+        model_artifact = wandb.Artifact('ddqn', type='model')
+        model_artifact.add_file('ddqn-policy.pth')
+        wandb.log_artifact(model_artifact)
         print('Ep {}\tMoving average score: {:.2f}\t'.format(epoch, episode_reward))
-
+        wandb.log({"Episode Reward": episode_reward})
 
 
 
