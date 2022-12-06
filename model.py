@@ -2,16 +2,16 @@ import torch.nn as nn
 import torch
 
 class QNetwork(nn.Module):
-    def __init__(self):
+    def __init__(self, input_dim=6, output_dim=3):
         super(QNetwork, self).__init__()
 
-        self.fc1 = nn.Linear(6,16)
+        self.fc1 = nn.Linear(input_dim, 16)
         self.relu = nn.ReLU()
         self.fc_value = nn.Linear(16, 256)
         self.fc_adv = nn.Linear(16, 256)
 
         self.value = nn.Linear(256, 1)
-        self.adv = nn.Linear(256, 3)
+        self.adv = nn.Linear(256, output_dim)
 
     def forward(self, state):
         y = self.relu(self.fc1(state))
