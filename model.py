@@ -5,13 +5,13 @@ class QNetwork(nn.Module):
     def __init__(self):
         super(QNetwork, self).__init__()
 
-        self.fc1 = nn.Linear(4,16)
+        self.fc1 = nn.Linear(6,16)
         self.relu = nn.ReLU()
         self.fc_value = nn.Linear(16, 256)
         self.fc_adv = nn.Linear(16, 256)
 
         self.value = nn.Linear(256, 1)
-        self.adv = nn.Linear(256, 2)
+        self.adv = nn.Linear(256, 3)
 
     def forward(self, state):
         y = self.relu(self.fc1(state))
