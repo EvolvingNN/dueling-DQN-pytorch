@@ -12,9 +12,6 @@ import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-
-
-
 class Memory(object):
     def __init__(self, memory_size: int) -> None:
         self.memory_size = memory_size
@@ -43,8 +40,8 @@ env = gym.make('Acrobot-v1')
 n_state = env.observation_space.shape[0]
 n_action = env.action_space.n
 
-onlineQNetwork = QNetwork().to(device)
-targetQNetwork = QNetwork().to(device)
+onlineQNetwork = QNetwork(input_dim=4, output_dim=3).to(device)
+targetQNetwork = QNetwork(input_dim=4, output_dim=3).to(device)
 targetQNetwork.load_state_dict(onlineQNetwork.state_dict())
 
 optimizer = torch.optim.Adam(onlineQNetwork.parameters(), lr=1e-4)
@@ -68,7 +65,7 @@ begin_learn = False
 episode_reward = 0
 
 
-run = wandb.init(project="Dueling DQN", entity="evolvingnn")
+run = wandb.init(project="Dueling DQN Acrobot", entity="evolvingnn")
 
 wandb.config = {
     "Gamma": GAMMA,
